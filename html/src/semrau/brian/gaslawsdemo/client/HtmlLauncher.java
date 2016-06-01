@@ -7,13 +7,14 @@ import semrau.brian.gaslawsdemo.GasLawsDemo;
 
 public class HtmlLauncher extends GwtApplication {
 
-        @Override
-        public GwtApplicationConfiguration getConfig () {
-                return new GwtApplicationConfiguration(720, 480);
-        }
+    @Override
+    public GwtApplicationConfiguration getConfig() {
+        return new GwtApplicationConfiguration(720, 480);
+    }
 
-        @Override
-        public ApplicationListener getApplicationListener () {
-                return new GasLawsDemo();
-        }
+    @Override
+    public ApplicationListener getApplicationListener() {
+        return new GasLawsDemo();
+    }
+
 }
