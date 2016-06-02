@@ -1,5 +1,11 @@
 d:assets:0:application/unknown
 i:badlogic.jpg:68465:image/jpeg
+d:visui:0:application/unknown
+t:visui/default.fnt:57194:application/unknown
+t:visui/font-small.fnt:50734:application/unknown
+t:visui/uiskin.atlas:10348:application/unknown
+t:visui/uiskin.json:13204:application/unknown
+i:visui/uiskin.png:46117:image/png
 t:com/badlogic/gdx/graphics/g3d/particles/particles.fragment.glsl:770:application/unknown
 t:com/badlogic/gdx/graphics/g3d/particles/particles.vertex.glsl:2886:application/unknown
 t:com/badlogic/gdx/graphics/g3d/shaders/default.fragment.glsl:5163:application/unknown
