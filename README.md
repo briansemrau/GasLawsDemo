@@ -1,2 +1,3 @@
 # GasLawsDemo
-A gas laws demonstration displaying particles interacting, as well as theoretical calculations.
+A gas laws simulation displaying gas particles in motion as well as theoretical calculations.<p>
+http://briansemrau.github.io/GasLawsDemo/demo/
