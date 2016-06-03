@@ -1,7 +1,8 @@
 {
 com.badlogic.gdx.graphics.g2d.BitmapFont: {
 	default-font: {file: default.fnt },
-	small-font: {file: font-small.fnt }
+	small-font: {file: font-small.fnt },
+	large-font: {file: font-large.fnt }
 },
 com.badlogic.gdx.graphics.Color: {
 	black: {a: 1, b: 0, g: 0, r: 0 },
@@ -49,18 +50,15 @@ com.badlogic.gdx.scenes.scene2d.ui.ProgressBar$ProgressBarStyle: {
 	default-horizontal: {background: progressbar, knob: progressbar-filled, knobBefore: progressbar-filled },
 	default-vertical: {background: progressbar-vertical, knob: progressbar-filled-vertical, knobBefore: progressbar-filled-vertical }
 },
-//com.badlogic.gdx.scenes.scene2d.ui.Slider$SliderStyle: {
-//	default-horizontal: {background: slider, knob: slider-knob, knobOver: slider-knob-over, knobDown: slider-knob-down, disabledKnob: slider-knob-disabled },
-//	default-vertical: {background: slider-vertical, knob: slider-knob, knobOver: slider-knob-over, knobDown: slider-knob-down, disabledKnob: slider-knob-disabled }
-//},
 com.badlogic.gdx.scenes.scene2d.ui.Slider$SliderStyle: {
-	default-horizontal: {background: slider, knob: slider-knob, knobOver: slider-knob-over, knobDown: slider-knob, disabledKnob: slider-knob-disabled },
-	default-vertical: {background: slider-vertical, knob: slider-knob, knobOver: slider-knob-over, knobDown: slider-knob, disabledKnob: slider-knob-disabled }
+	default-horizontal: {background: slider, knob: slider-knob, knobOver: slider-knob-over, knobDown: slider-knob-down, disabledKnob: slider-knob-disabled },
+	default-vertical: {background: slider-vertical, knob: slider-knob, knobOver: slider-knob-over, knobDown: slider-knob-down, disabledKnob: slider-knob-disabled }
 },
 com.badlogic.gdx.scenes.scene2d.ui.Label$LabelStyle: {
 	default: {font: default-font, fontColor: white },
 	link-label: {fontColor: link-label, font: default-font },
 	small: {font: small-font, fontColor: white },
+	large: {font: large-font, fontColor: white },
 	menuitem-shortcut: {font: default-font, fontColor: menuitem }
 },
 com.badlogic.gdx.scenes.scene2d.ui.TextField$TextFieldStyle: {
