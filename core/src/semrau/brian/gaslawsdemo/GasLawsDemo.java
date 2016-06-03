@@ -1,7 +1,6 @@
 package semrau.brian.gaslawsdemo;
 
 import com.badlogic.gdx.*;
-import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.*;
@@ -11,7 +10,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.*;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
-import net.dermetfan.gdx.physics.box2d.*;
 
 import java.util.ArrayList;
 
@@ -22,7 +20,8 @@ public class GasLawsDemo extends ApplicationAdapter {
     private Stage stage;
     private Skin skin;
 
-    private Table controlTable;
+    private Table equationTable;
+    private Table specialControlsTable;
 
     private Slider molSlider; // mol
     private TextField molField;
@@ -33,12 +32,14 @@ public class GasLawsDemo extends ApplicationAdapter {
     private Slider pSlider; // atm
     private TextField pField;
 
-    private TextButton constantButton;
-    private int buttonState = 0;
+    private boolean fixingValues;
 
     private TextButton stpButton;
 
-    private boolean fixingValues;
+    private ButtonGroup<TextButton> lockGroup;
+    private TextButton pvLock;
+    private TextButton ptLock;
+    private TextButton vtLock;
 
     // Rendering
 
@@ -56,10 +57,17 @@ public class GasLawsDemo extends ApplicationAdapter {
     private ArrayList<Body> particles;
     private ArrayList<Body> toRemove;
     private final float particleRadius = 3.0f / 16.0f;
-    private final float wallThickness = 3;
+    private final float wallThickness = 5;
 
     private final int MOLE = 20;
     private final float R = 0.082057f; // L atm mol-1 K-1
+
+    // Performance measuring
+
+    private double guiRender;
+    private double simRender;
+    private double simStep;
+    private double relocateParticles;
 
     @Override
     public void create() {
@@ -75,14 +83,23 @@ public class GasLawsDemo extends ApplicationAdapter {
         stage = new Stage(new ScreenViewport());
         skin = new Skin(Gdx.files.internal("visui/uiskin.json"));
 
-        // Create controlTable
-        controlTable = new Table(skin);
-        controlTable.pad(10);
+        // Create tables
+        equationTable = new Table(skin);
+        equationTable.pad(10);
+        equationTable.setFillParent(true);
+        equationTable.align(Align.center | Align.top);
 
-        controlTable.setFillParent(true);
-        controlTable.align(Align.left | Align.top);
+        specialControlsTable = new Table(skin);
+        specialControlsTable.pad(10);
+        specialControlsTable.setFillParent(true);
+        specialControlsTable.align(Align.right | Align.top);
 
         // Create components
+
+        // ######################
+        // Sliders
+        // ######################
+
         molSlider = new Slider(0, 10, 0.01f, true, skin);
         molSlider.addListener(new ChangeListener() {
             @Override
@@ -100,7 +117,6 @@ public class GasLawsDemo extends ApplicationAdapter {
                 setVolume(vSlider.getValue());
             }
         });
-        vSlider.setDisabled(true);
 
         tSlider = new Slider(0.1f, 2000, 0.01f, true, skin);
         tSlider.addListener(new ChangeListener() {
@@ -127,6 +143,10 @@ public class GasLawsDemo extends ApplicationAdapter {
                 setPressure(pSlider.getValue());
             }
         });
+
+        // ######################
+        // Text Fields
+        // ######################
 
         TextField.TextFieldFilter filter = new TextField.TextFieldFilter() {
             @Override
@@ -221,103 +241,100 @@ public class GasLawsDemo extends ApplicationAdapter {
 
         fixValues(22.414f, 273.15f, 1.0f, 1);
 
-        constantButton = new TextButton("Const. V", skin);
-        constantButton.addListener(new ClickListener() {
-            @Override
-            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
-                super.touchUp(event, x, y, pointer, button);
-                buttonState++;
-                switch (buttonState) {
-                    case 3:
-                        buttonState = 0;
-                    case 0:
-                        constantButton.setText("Const. V");
-                        vSlider.setDisabled(true);
-                        vField.setDisabled(true);
-                        pSlider.setDisabled(false);
-                        pField.setDisabled(false);
-                        break;
-                    case 1:
-                        constantButton.setText("Const. Temp.");
-                        vSlider.setDisabled(false);
-                        vField.setDisabled(false);
-                        tSlider.setDisabled(true);
-                        tField.setDisabled(true);
-                        break;
-                    case 2:
-                        constantButton.setText("Const. P");
-                        tSlider.setDisabled(false);
-                        tField.setDisabled(false);
-                        pSlider.setDisabled(true);
-                        pField.setDisabled(true);
-                        break;
-                }
-            }
-        });
+        // ######################
+        // Buttons
+        // ######################
 
         stpButton = new TextButton("Set to STP", skin);
-        stpButton.addListener(new ClickListener(){
+        stpButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 fixValues(22.414f, 273.15f, 1.0f, 1);
             }
         });
 
-        // Build controlTable
-        controlTable.add(new Label("P", skin));
-        controlTable.add(new Label("V", skin));
-        controlTable.add(new Label("=", skin));
-        controlTable.add(new Label("n", skin));
-        controlTable.add(new Label("R", skin));
-        controlTable.add(new Label("T", skin));
-        controlTable.add(stpButton);
-        controlTable.row();
+        pvLock = new TextButton("P vs V", skin, "toggle");
+        pvLock.addListener(new ClickListener() {
 
-        controlTable.add(pSlider);
-        controlTable.add(vSlider);
-        controlTable.add(new Label("", skin)).width(50).padRight(10);
-        controlTable.add(molSlider);
-        controlTable.add(new Label("", skin)).width(50).padRight(10);
-        controlTable.add(tSlider);
-        controlTable.row();
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                tSlider.setVisible(false);
+                tField.setDisabled(true);
 
-        controlTable.add(pField).width(50).padRight(10);
-        controlTable.add(vField).width(50).padRight(10);
-        controlTable.add(new Label("=", skin));
-        controlTable.add(molField).width(50).padRight(10);
-        controlTable.add(new Label("R", skin));
-        controlTable.add(tField).width(50).padRight(10);
-        controlTable.row();
+                pSlider.setVisible(true);
+                pField.setDisabled(false);
+                vSlider.setVisible(true);
+                vField.setDisabled(false);
+            }
+        });
+        ptLock = new TextButton("P vs T", skin, "toggle");
+        ptLock.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                vSlider.setVisible(false);
+                vField.setDisabled(true);
 
-        controlTable.add(constantButton).width(100).padTop(10);
+                pSlider.setVisible(true);
+                pField.setDisabled(false);
+                tSlider.setVisible(true);
+                tField.setDisabled(false);
+            }
+        });
+        vtLock = new TextButton("V vs T", skin, "toggle");
+        vtLock.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                pSlider.setVisible(false);
+                pField.setDisabled(true);
 
-//        controlTable.add(new Label("Particles", skin));
-//        controlTable.row();
-//        controlTable.add(molSlider);
-//        controlTable.add(molField);
-//        controlTable.add(new Label("mol", skin));
-//        controlTable.row();
-//        controlTable.add(new Label("Volume", skin));
-//        controlTable.row();
-//        controlTable.add(vSlider);
-//        controlTable.add(vField);
-//        controlTable.add(new Label("L", skin));
-//        controlTable.row();
-//        controlTable.add(new Label("Temperature", skin));
-//        controlTable.row();
-//        controlTable.add(tSlider);
-//        controlTable.add(tField);
-//        controlTable.add(new Label("K", skin));
-//        controlTable.row();
-//        controlTable.add(new Label("Pressure", skin));
-//        controlTable.row();
-//        controlTable.add(pSlider);
-//        controlTable.add(pField);
-//        controlTable.add(new Label("atm", skin));
-//        controlTable.row();
-//        controlTable.add(constantButton).width(160);
+                tSlider.setVisible(true);
+                tField.setDisabled(false);
+                vSlider.setVisible(true);
+                vField.setDisabled(false);
+            }
+        });
+        lockGroup = new ButtonGroup<TextButton>(pvLock, ptLock, vtLock);
 
-        stage.addActor(controlTable);
+        ptLock.setChecked(true);
+        ptLock.getClickListener().clicked(null, 0, 0);
+
+        // Build equationTable
+        equationTable.add(new Label("P", skin, "large"));
+        equationTable.add(new Label("V", skin, "large"));
+        equationTable.add(new Label("=", skin, "large"));
+        equationTable.add(new Label("n", skin, "large"));
+        equationTable.add(new Label("R", skin, "large"));
+        equationTable.add(new Label("T", skin, "large"));
+        equationTable.row();
+
+        equationTable.add(pSlider);
+        equationTable.add(vSlider);
+        equationTable.add(new Label("", skin)).width(50).padRight(10);
+        equationTable.add(molSlider);
+        equationTable.add(new Label("", skin)).width(50).padRight(10);
+        equationTable.add(tSlider);
+        equationTable.row();
+
+        equationTable.add(pField).width(50).padRight(10);
+        equationTable.add(vField).width(50).padRight(10);
+        equationTable.add(new Label("=", skin, "large"));
+        equationTable.add(molField).width(50).padRight(10);
+        equationTable.add(new Label("R", skin, "large"));
+        equationTable.add(tField).width(50).padRight(10);
+        equationTable.row();
+
+        stage.addActor(equationTable);
+
+        // Build special controls table
+        specialControlsTable.add(stpButton);
+        specialControlsTable.row();
+        specialControlsTable.add(pvLock).padTop(10);
+        specialControlsTable.row();
+        specialControlsTable.add(ptLock).padTop(10);
+        specialControlsTable.row();
+        specialControlsTable.add(vtLock).padTop(10);
+
+        stage.addActor(specialControlsTable);
     }
 
     private void initRendering() {
@@ -427,30 +444,30 @@ public class GasLawsDemo extends ApplicationAdapter {
     }
 
     private void setPressure(float p) {
-        if (buttonState == 0) {
+        if (ptLock.isChecked()) {
             // Const V, update T; T = PV/nR
             fixValues(-1, p * getVolume() / (getMoles() * R), p, -1);
-        } else if (buttonState == 1) {
+        } else if (pvLock.isChecked()) {
             // Const T, update V; V = nRT/P
             fixValues(getMoles() * R * getTemp() / p, -1, p, -1);
         }
     }
 
     private void setVolume(float v) {
-        if (buttonState == 1) {
+        if (pvLock.isChecked()) {
             // Const T, update P; P = nRT/V
             fixValues(v, getTemp(), getMoles() * R * getTemp() / v, -1);
-        } else if (buttonState == 2) {
+        } else if (vtLock.isChecked()) {
             // Const P, update T; T = PV/nR
             fixValues(v, getPressure() * v / (getMoles() * R), -1, -1);
         }
     }
 
     private void setTemp(float k) {
-        if (buttonState == 0) {
+        if (ptLock.isChecked()) {
             // Const V, update P; P = nRT/V
             fixValues(-1, k, getMoles() * R * k / getVolume(), -1);
-        } else if (buttonState == 2) {
+        } else if (vtLock.isChecked()) {
             // Const P, update V; V = nRT/P
             fixValues(getMoles() * R * k / getPressure(), k, -1, -1);
         }
@@ -458,17 +475,17 @@ public class GasLawsDemo extends ApplicationAdapter {
 
     private void setMoles(float m) {
         // Don't change volume
-        if (buttonState == 0 || buttonState == 1) {
+        if (ptLock.isChecked() || pvLock.isChecked()) {
             // Const T, update P; P = nRT/V
             fixValues(-1, getTemp(), m * R * getTemp() / getVolume(), m);
-        } else if (buttonState == 2) {
+        } else if (vtLock.isChecked()) {
             // Const P, update T; T = PV/nR
             fixValues(-1, getPressure() * getVolume() / (m * R), -1, m);
         }
     }
 
     private String ezFormat(float number) {
-        return "" + (int) (number * 100) / 100.0f;
+        return "" + (int) (number * 100.0) / 100.0;
     }
 
     private void fixValues(float v, float t, float p, float m) {
@@ -513,7 +530,7 @@ public class GasLawsDemo extends ApplicationAdapter {
 
         if (timeToStep >= stepTime) {
             // Destroy and recreate all particles found outside the box
-            float size = wallSize() / 2;
+            float size = wallSize() / 2 + wallThickness;
             for (Body b : particles) {
                 if (b.getPosition().x < -size || b.getPosition().x > size || b.getPosition().y < -size || b.getPosition().y > size) {
                     b2world.destroyBody(b);
@@ -563,7 +580,7 @@ public class GasLawsDemo extends ApplicationAdapter {
                     0.5f,
                     1 - a,
                     1);
-            shapeRenderer.circle(p.getPosition().x, p.getPosition().y, particleRadius + 0.1f, 5);
+            shapeRenderer.circle(p.getPosition().x, p.getPosition().y, particleRadius + 0.1f, 7);
         }
         // Walls
         float size = wallSize() / 2;
@@ -578,7 +595,7 @@ public class GasLawsDemo extends ApplicationAdapter {
 //        b2renderer.render(b2world, camera.combined);
 
         // Draw GUI table outlines
-        controlTable.drawDebug(shapeRenderer);
+        equationTable.drawDebug(shapeRenderer);
 
         stage.draw();
     }
