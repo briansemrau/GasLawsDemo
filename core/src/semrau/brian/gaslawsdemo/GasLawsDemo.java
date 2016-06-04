@@ -11,7 +11,6 @@ import com.badlogic.gdx.scenes.scene2d.utils.*;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
-import java.text.NumberFormat;
 import java.util.ArrayList;
 
 public class GasLawsDemo extends ApplicationAdapter {
@@ -41,8 +40,6 @@ public class GasLawsDemo extends ApplicationAdapter {
     private TextButton pvLock;
     private TextButton ptLock;
     private TextButton vtLock;
-
-    private NumberFormat format;
 
     // Rendering
 
@@ -82,9 +79,6 @@ public class GasLawsDemo extends ApplicationAdapter {
     }
 
     private void createGUI() {
-        format = NumberFormat.getInstance();
-        format.setMaximumFractionDigits(2);
-
         // Create stage and skin
         stage = new Stage(new ScreenViewport());
         skin = new Skin(Gdx.files.internal("visui/uiskin.json"));
@@ -497,18 +491,22 @@ public class GasLawsDemo extends ApplicationAdapter {
         }
     }
 
+    private String ezFormat(float val) {
+        return "" + (Math.round(val * 100.0f) / 100.0f);
+    }
+
     private void fixValues(float v, float t, float p, float m) {
         fixingValues = true;
         if (v != -1) {
             vSlider.setValue(v);
-            vField.setText(format.format(vSlider.getValue()));
+            vField.setText(ezFormat(vSlider.getValue()));
             vField.setColor(Color.WHITE);
             if (b2world != null)
                 createWalls();
         }
         if (t != -1) {
             tSlider.setValue(t);
-            tField.setText(format.format(tSlider.getValue()));
+            tField.setText(ezFormat(tSlider.getValue()));
             tField.setColor(Color.WHITE);
 
 //            if (particles != null) {
@@ -520,12 +518,12 @@ public class GasLawsDemo extends ApplicationAdapter {
         }
         if (p != -1) {
             pSlider.setValue(p);
-            pField.setText(format.format(pSlider.getValue()));
+            pField.setText(ezFormat(pSlider.getValue()));
             pField.setColor(Color.WHITE);
         }
         if (m != -1) {
             molSlider.setValue(m);
-            molField.setText(format.format(molSlider.getValue()));
+            molField.setText(ezFormat(molSlider.getValue()));
             molField.setColor(Color.WHITE);
             if (b2world != null)
                 createParticles((int) (getMoles() * MOLE));
