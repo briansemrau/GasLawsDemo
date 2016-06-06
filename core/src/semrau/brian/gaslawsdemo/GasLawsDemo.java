@@ -62,12 +62,7 @@ public class GasLawsDemo extends ApplicationAdapter {
     private final int MOLE = 20;
     private final float R = 0.082057f; // L atm mol-1 K-1
 
-    // Performance measuring
-
-    private double guiRender;
-    private double simRender;
-    private double simStep;
-    private double relocateParticles;
+    private float v, p, n, t;
 
     @Override
     public void create() {
@@ -155,7 +150,7 @@ public class GasLawsDemo extends ApplicationAdapter {
             }
         };
 
-        molField = new TextField("" + getMoles(), skin);
+        molField = new TextField("" + molSlider.getValue(), skin);
         molField.setTextFieldFilter(filter);
         molField.addListener(new ChangeListener() {
             @Override
@@ -176,7 +171,7 @@ public class GasLawsDemo extends ApplicationAdapter {
             }
         });
 
-        vField = new TextField("" + getVolume(), skin);
+        vField = new TextField("" + vSlider.getValue(), skin);
         vField.setTextFieldFilter(filter);
         vField.addListener(new ChangeListener() {
             @Override
@@ -197,7 +192,7 @@ public class GasLawsDemo extends ApplicationAdapter {
             }
         });
 
-        tField = new TextField("" + getTemp(), skin);
+        tField = new TextField("" + tSlider.getValue(), skin);
         tField.setTextFieldFilter(filter);
         tField.addListener(new ChangeListener() {
             @Override
@@ -218,7 +213,7 @@ public class GasLawsDemo extends ApplicationAdapter {
             }
         });
 
-        pField = new TextField("" + getPressure(), skin);
+        pField = new TextField("" + pSlider.getValue(), skin);
         pField.setTextFieldFilter(filter);
         pField.addListener(new ChangeListener() {
             @Override
@@ -284,7 +279,7 @@ public class GasLawsDemo extends ApplicationAdapter {
                 vSlider.setVisible(true);
             }
         });
-        lockGroup = new ButtonGroup<TextButton>(pvLock, ptLock, vtLock);
+        lockGroup = new ButtonGroup<>(pvLock, ptLock, vtLock);
 
         ptLock.setChecked(true);
         vSlider.setVisible(false);
@@ -355,7 +350,7 @@ public class GasLawsDemo extends ApplicationAdapter {
 
         createWalls();
 
-        setMoles(getMoles());
+        setMoles(molSlider.getValue());
     }
 
     private void createWalls() {
@@ -406,7 +401,7 @@ public class GasLawsDemo extends ApplicationAdapter {
         float size = wallSize() / 2;
         float thick = wallThickness / 2;
 
-        float vel = (float) Math.sqrt(getTemp() * 2); // KE = 1/2 m v^2
+        float vel = (float) Math.sqrt(t * 2); // KE = 1/2 m v^2
 
         for (int i = particles.size(); i < count; i++) {
             float x = MathUtils.random(-size + thick, size - thick);
@@ -423,32 +418,16 @@ public class GasLawsDemo extends ApplicationAdapter {
     }
 
     private float wallSize() {
-        return ((float) Math.sqrt(getVolume())) * 5;
-    }
-
-    private float getPressure() {
-        return pSlider.getValue();
-    }
-
-    private float getVolume() {
-        return vSlider.getValue();
-    }
-
-    private float getTemp() {
-        return tSlider.getValue();
-    }
-
-    private float getMoles() {
-        return molSlider.getValue();
+        return ((float) Math.sqrt(v)) * 5;
     }
 
     private void setPressure(float p) {
         if (ptLock.isChecked()) {
             // Const V, update T; T = PV/nR
-            fixValues(-1, p * getVolume() / (getMoles() * R), p, -1);
+            fixValues(-1, p * v / (n * R), p, -1);
         } else if (pvLock.isChecked()) {
             // Const T, update V; V = nRT/P
-            fixValues(getMoles() * R * getTemp() / p, -1, p, -1);
+            fixValues(n * R * t / p, -1, p, -1);
         } else {
             fixValues(-1, -1, p, -1);
         }
@@ -457,37 +436,37 @@ public class GasLawsDemo extends ApplicationAdapter {
     private void setVolume(float v) {
         if (pvLock.isChecked()) {
             // Const T, update P; P = nRT/V
-            fixValues(v, -1, getMoles() * R * getTemp() / v, -1);
+            fixValues(v, -1, n * R * t / v, -1);
         } else if (vtLock.isChecked()) {
             // Const P, update T; T = PV/nR
-            fixValues(v, getPressure() * v / (getMoles() * R), -1, -1);
+            fixValues(v, p * v / (n * R), -1, -1);
         } else {
             fixValues(v, -1, -1, -1);
         }
     }
 
-    private void setTemp(float k) {
+    private void setTemp(float t) {
         if (ptLock.isChecked()) {
             // Const V, update P; P = nRT/V
-            fixValues(-1, k, getMoles() * R * k / getVolume(), -1);
+            fixValues(-1, t, n * R * t / v, -1);
         } else if (vtLock.isChecked()) {
             // Const P, update V; V = nRT/P
-            fixValues(getMoles() * R * k / getPressure(), k, -1, -1);
+            fixValues(n * R * t / p, t, -1, -1);
         } else {
-            fixValues(-1, k, -1, -1);
+            fixValues(-1, t, -1, -1);
         }
     }
 
-    private void setMoles(float m) {
+    private void setMoles(float n) {
         // Don't change volume
         if (ptLock.isChecked() || pvLock.isChecked()) {
             // Const T, update P; P = nRT/V
-            fixValues(-1, -1, m * R * getTemp() / getVolume(), m);
+            fixValues(-1, -1, n * R * t / v, n);
         } else if (vtLock.isChecked()) {
             // Const P, update T; T = PV/nR
-            fixValues(-1, getPressure() * getVolume() / (m * R), -1, m);
+            fixValues(-1, p * v / (n * R), -1, n);
         } else {
-            fixValues(-1, -1, -1, m);
+            fixValues(-1, -1, -1, n);
         }
     }
 
@@ -495,18 +474,20 @@ public class GasLawsDemo extends ApplicationAdapter {
         return "" + (Math.round(val * 100.0f) / 100.0f);
     }
 
-    private void fixValues(float v, float t, float p, float m) {
+    private void fixValues(float v, float t, float p, float n) {
         fixingValues = true;
         if (v != -1) {
+            this.v = v;
             vSlider.setValue(v);
-            vField.setText(ezFormat(vSlider.getValue()));
+            vField.setText(ezFormat(v));
             vField.setColor(Color.WHITE);
             if (b2world != null)
                 createWalls();
         }
         if (t != -1) {
+            this.t = t;
             tSlider.setValue(t);
-            tField.setText(ezFormat(tSlider.getValue()));
+            tField.setText(ezFormat(t));
             tField.setColor(Color.WHITE);
 
 //            if (particles != null) {
@@ -517,16 +498,18 @@ public class GasLawsDemo extends ApplicationAdapter {
 //            }
         }
         if (p != -1) {
+            this.p = p;
             pSlider.setValue(p);
-            pField.setText(ezFormat(pSlider.getValue()));
+            pField.setText(ezFormat(p));
             pField.setColor(Color.WHITE);
         }
-        if (m != -1) {
-            molSlider.setValue(m);
-            molField.setText(ezFormat(molSlider.getValue()));
+        if (n != -1) {
+            this.n = n;
+            molSlider.setValue(n);
+            molField.setText(ezFormat(n));
             molField.setColor(Color.WHITE);
             if (b2world != null)
-                createParticles((int) (getMoles() * MOLE));
+                createParticles((int) (this.n * MOLE));
         }
         fixingValues = false;
     }
@@ -555,7 +538,8 @@ public class GasLawsDemo extends ApplicationAdapter {
                 vel2 += b.getLinearVelocity().len2();
             }
             vel2 /= particles.size();
-            float scale = (float) Math.sqrt(getTemp() / vel2);
+            if (t == 0) t = 0.00001f;
+            float scale = (float) Math.sqrt(t / vel2);
             for (Body b : particles) {
                 b.setLinearVelocity(b.getLinearVelocity().scl(scale));
             }
